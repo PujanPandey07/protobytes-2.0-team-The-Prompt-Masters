@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SADRN - Enhanced Disaster Response Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: #0a0a0f; 
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 12px 25px;
+            border-bottom: 2px solid #0f4c75;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: #00d9ff; font-size: 1.3em; }
+        .status-bar { display: flex; gap: 15px; align-items: center; }
+        .status-badge { 
+            padding: 4px 12px; 
+            border-radius: 15px; 
+            font-size: 0.8em;
+        }
+        .status-online { background: #00c853; color: #000; }
+        .status-offline { background: #ff1744; color: #fff; }
+        
+        .main { 
+            display: grid; 
+            grid-template-columns: 280px 1fr 320px; 
+            gap: 12px; 
+            padding: 12px; 
+            height: calc(100vh - 60px); 
+        }
+        
+        .panel {
+            background: #12121a;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            background: #1a1a2e;
+            padding: 10px 12px;
+            border-bottom: 1px solid #2a2a3a;
+            font-weight: 600;
+            color: #00d9ff;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .panel-body { 
+            padding: 10px; 
+            overflow-y: auto; 
+            flex: 1;
+        }
+        
+        /* Stats */
+        .stats-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .stat-box {
+            flex: 1;
+            background: #1a1a2e;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-box .num { font-size: 1.4em; font-weight: 700; color: #00d9ff; }
+        .stat-box .lbl { font-size: 0.7em; color: #888; }
+        .stat-box.emergency .num { color: #ff1744; }
+        .stat-box.high .num { color: #ff9100; }
+        
+        /* Sensor Controls */
+        .sensor-control {
+            background: #1a1a2e;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #0f4c75;
+        }
+        .sensor-control.flood { border-left-color: #2196f3; }
+        .sensor-control.earthquake { border-left-color: #9c27b0; }
+        .sensor-control.fire { border-left-color: #f44336; }
+        .sensor-control h4 { 
+            font-size: 0.85em; 
+            margin-bottom: 8px; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sensor-control h4 span { color: #888; font-weight: normal; }
+        .slider-row { display: flex; align-items: center; gap: 8px; }
+        .slider-row input[type="range"] { flex: 1; }
+        .slider-row .value { 
+            min-width: 60px; 
+            text-align: right; 
+            font-family: monospace;
+            color: #00d9ff;
+        }
+        .slider-row .unit { color: #888; font-size: 0.8em; }
+        .toggle-btn {
+            padding: 3px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.75em;
+        }
+        .toggle-btn.on { background: #00c853; color: #000; }
+        .toggle-btn.off { background: #444; color: #888; }
+        
+        /* Threshold indicator */
+        .threshold { 
+            font-size: 0.7em; 
+            color: #888; 
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .threshold .warn { color: #ff9100; }
+        .threshold .danger { color: #ff1744; }
+        
+        /* Node Control */
+        .node-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+        .node-btn {
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75em;
+            transition: all 0.2s;
+        }
+        .node-btn.up { background: #1b5e20; color: #fff; }
+        .node-btn.down { background: #b71c1c; color: #fff; }
+        .node-btn:hover { opacity: 0.8; }
+        
+        /* Topology Canvas */
+        #topology-canvas {
+            width: 100%;
+            height: 100%;
+            min-height: 280px;
+            background: #0a0a12;
+            border-radius: 6px;
+        }
+        
+        /* Flow Table */
+        .flow-table { width: 100%; font-size: 0.75em; border-collapse: collapse; }
+        .flow-table th { 
+            background: #1a1a2e; 
+            padding: 6px; 
+            text-align: left; 
+            position: sticky; 
+            top: 0;
+            color: #00d9ff;
+        }
+        .flow-table td { 
+            padding: 5px 6px; 
+            border-bottom: 1px solid #1a1a2e; 
+            white-space: nowrap;
+        }
+        .flow-table tr:hover { background: #1a1a2e; }
+        .flow-table .name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+        
+        .priority-emergency { color: #ff1744; font-weight: 700; }
+        .priority-high { color: #ff9100; }
+        .priority-normal { color: #00e676; }
+        
+        /* Display Output */
+        .display-item {
+            background: #1a1a2e;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+        }
+        .display-item.alert { 
+            border-left: 3px solid #ff1744; 
+            background: #2a1a1a;
+        }
+        .display-item .type { color: #00d9ff; }
+        .display-item .value { font-family: monospace; font-weight: 600; }
+        .display-item .value.high { color: #ff1744; }
+        .display-item .time { color: #666; font-size: 0.8em; }
+        
+        /* Legend */
+        .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .legend-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; 
+            font-size: 0.7em;
+        }
+        .legend-color { width: 12px; height: 12px; border-radius: 50%; }
+        
+        /* Live indicator */
+        .live-dot {
+            width: 6px; height: 6px;
+            background: #00e676;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0a0a0f; }
+        ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+        
+        .col { display: flex; flex-direction: column; gap: 12px; }
+        
+        /* Path animation */
+        @keyframes flowPath {
+            0% { stroke-dashoffset: 20; }
+            100% { stroke-dashoffset: 0; }
+        }
+        .flow-path {
+            stroke-dasharray: 5, 5;
+            animation: flowPath 0.5s linear infinite;
+        }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+        .tab {
+            padding: 5px 10px;
+            background: #1a1a2e;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+        .tab.active { background: #0f4c75; color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>SADRN - Software-Defined Adaptive Disaster Response Network</h1>
+        <div class="status-bar">
+            <span id="controller-status" class="status-badge status-offline">Controller: Checking...</span>
+            <span style="color:#888;font-size:0.8em" id="update-time">--</span>
+        </div>
+    </div>
+    
+    <div class="main">
+        <!-- LEFT COLUMN -->
+        <div class="col">
+            <!-- Stats -->
+            <div class="panel">
+                <div class="panel-header"><span class="live-dot"></span>Network Stats</div>
+                <div class="panel-body">
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <div class="num" id="stat-packets">0</div>
+                            <div class="lbl">Packets</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="num" id="stat-flows">0</div>
+                            <div class="lbl">Flows</div>
+                        </div>
+                    </div>
+                    <div class="stats-row">
+                        <div class="stat-box emergency">
+                            <div class="num" id="stat-emergency">0</div>
+                            <div class="lbl">Emergency</div>
+                        </div>
+                        <div class="stat-box high">
+                            <div class="num" id="stat-high">0</div>
+                            <div class="lbl">High Priority</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sensor Controls -->
+            <div class="panel" style="flex:1">
+                <div class="panel-header">Sensor Value Control</div>
+                <div class="panel-body">
+                    <!-- Flood Sensors -->
+                    <div class="sensor-control flood">
+                        <h4>Water Level Sensor (A1) <span>Flood Zone</span></h4>
+                        <div class="slider-row">
+                            <input type="range" id="slider-water" min="0" max="150" value="25" 
+                                   oninput="updateSensor('flood_sensor_a1', this.value)">
+                            <span class="value" id="val-water">25</span>
+                            <span class="unit">cm</span>
+                        </div>
+                        <div class="threshold">
+                            <span>Normal: 0-50</span>
+                            <span class="warn">Warning: 50-80</span>
+                            <span class="danger">Danger: &gt;80</span>
+                        </div>
+                    </div>
+                    
+                    <div class="sensor-control flood">
+                        <h4>Rainfall Sensor (A2) <span>Flood Zone</span></h4>
+                        <div class="slider-row">
+                            <input type="range" id="slider-rain" min="0" max="100" value="10"
+                                   oninput="updateSensor('flood_sensor_a2', this.value)">
+                            <span class="value" id="val-rain">10</span>
+                            <span class="unit">mm/h</span>
+                        </div>
+                        <div class="threshold">
+                            <span>Normal: 0-20</span>
+                            <span class="warn">Heavy: 20-50</span>
+                            <span class="danger">Extreme: &gt;50</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Earthquake Sensors -->
+                    <div class="sensor-control earthquake">
+                        <h4>Seismic Sensor (B1) <span>Earthquake Zone</span></h4>
+                        <div class="slider-row">
+                            <input type="range" id="slider-seismic" min="0" max="10" step="0.1" value="1.5"
+                                   oninput="updateSensor('earthquake_sensor_b1', this.value)">
+                            <span class="value" id="val-seismic">1.5</span>
+                            <span class="unit">Richter</span>
+                        </div>
+                        <div class="threshold">
+                            <span>Normal: 0-3</span>
+                            <span class="warn">Warning: 3-5</span>
+                            <span class="danger">Major: &gt;5</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Fire Sensors -->
+                    <div class="sensor-control fire">
+                        <h4>Temperature Sensor (C1) <span>Fire Zone</span></h4>
+                        <div class="slider-row">
+                            <input type="range" id="slider-temp" min="0" max="200" value="28"
+                                   oninput="updateSensor('fire_sensor_c1', this.value)">
+                            <span class="value" id="val-temp">28</span>
+                            <span class="unit">°C</span>
+                        </div>
+                        <div class="threshold">
+                            <span>Normal: 0-40</span>
+                            <span class="warn">Hot: 40-70</span>
+                            <span class="danger">Fire: &gt;70</span>
+                        </div>
+                    </div>
+                    
+                    <div class="sensor-control fire">
+                        <h4>Smoke Sensor (C2) <span>Fire Zone</span></h4>
+                        <div class="slider-row">
+                            <input type="range" id="slider-smoke" min="0" max="500" value="50"
+                                   oninput="updateSensor('fire_sensor_c2', this.value)">
+                            <span class="value" id="val-smoke">50</span>
+                            <span class="unit">ppm</span>
+                        </div>
+                        <div class="threshold">
+                            <span>Normal: 0-100</span>
+                            <span class="warn">Warning: 100-200</span>
+                            <span class="danger">Danger: &gt;200</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CENTER COLUMN -->
+        <div class="col">
+            <!-- Topology -->
+            <div class="panel" style="flex:1">
+                <div class="panel-header">
+                    <span>Network Topology & Packet Flow</span>
+                    <span id="topo-info">0 nodes</span>
+                </div>
+                <div class="panel-body" style="padding:5px">
+                    <div class="legend">
+                        <div class="legend-item"><div class="legend-color" style="background:#0f4c75"></div>Switch</div>
+                        <div class="legend-item"><div class="legend-color" style="background:#ff9100"></div>Display</div>
+                        <div class="legend-item"><div class="legend-color" style="background:#2196f3"></div>Flood</div>
+                        <div class="legend-item"><div class="legend-color" style="background:#9c27b0"></div>Earthquake</div>
+                        <div class="legend-item"><div class="legend-color" style="background:#f44336"></div>Fire</div>
+                    </div>
+                    <canvas id="topology-canvas"></canvas>
+                </div>
+            </div>
+            
+            <!-- Packet Flows -->
+            <div class="panel" style="flex:1">
+                <div class="panel-header">
+                    <span><span class="live-dot"></span>Live Packet Flows</span>
+                    <span id="flow-count">0 flows</span>
+                </div>
+                <div class="panel-body" style="padding:0">
+                    <table class="flow-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Switch</th>
+                                <th>Source</th>
+                                <th>Destination</th>
+                                <th>Priority</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flow-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- RIGHT COLUMN -->
+        <div class="col">
+            <!-- Node Control -->
+            <div class="panel">
+                <div class="panel-header">Node Control (Up/Down)</div>
+                <div class="panel-body">
+                    <p style="font-size:0.75em;color:#888;margin-bottom:8px">Click to toggle node status:</p>
+                    <div class="node-grid">
+                        <button class="node-btn up" id="btn-s1" onclick="toggleNode('s1')">S1 (Core)</button>
+                        <button class="node-btn up" id="btn-s2" onclick="toggleNode('s2')">S2 (Flood)</button>
+                        <button class="node-btn up" id="btn-s3" onclick="toggleNode('s3')">S3 (EQ)</button>
+                        <button class="node-btn up" id="btn-s4" onclick="toggleNode('s4')">S4 (Fire)</button>
+                        <button class="node-btn up" id="btn-gw_a" onclick="toggleNode('gw_a')">Gateway A</button>
+                        <button class="node-btn up" id="btn-gw_b" onclick="toggleNode('gw_b')">Gateway B</button>
+                        <button class="node-btn up" id="btn-gw_c" onclick="toggleNode('gw_c')">Gateway C</button>
+                        <button class="node-btn up" id="btn-display" onclick="toggleNode('display')">Display</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Display Server Output -->
+            <div class="panel" style="flex:1">
+                <div class="panel-header">
+                    <span>Display Server Output</span>
+                    <span id="display-count">0 readings</span>
+                </div>
+                <div class="panel-body" id="display-output"></div>
+            </div>
+            
+            <!-- Switch Stats -->
+            <div class="panel">
+                <div class="panel-header">Switch Statistics</div>
+                <div class="panel-body" id="switch-stats"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // State
+        let topology = { nodes: [], edges: [] };
+        let nodeStatus = {};
+        let recentFlows = [];
+        let activeFlowPaths = [];
+        
+        // Canvas
+        const canvas = document.getElementById('topology-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width - 10;
+            canvas.height = rect.height - 40;
+            drawTopology();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Fixed node positions for clear layout
+        const nodePositions = {
+            's1': { x: 0.5, y: 0.15 },
+            's2': { x: 0.2, y: 0.4 },
+            's3': { x: 0.5, y: 0.4 },
+            's4': { x: 0.8, y: 0.4 },
+            '10.0.0.100': { x: 0.5, y: 0.02 },
+            '10.0.0.1': { x: 0.08, y: 0.25 },
+            '10.0.0.11': { x: 0.05, y: 0.55 },
+            '10.0.0.12': { x: 0.18, y: 0.6 },
+            '10.0.0.2': { x: 0.5, y: 0.58 },
+            '10.0.0.21': { x: 0.38, y: 0.75 },
+            '10.0.0.22': { x: 0.62, y: 0.75 },
+            '10.0.0.3': { x: 0.92, y: 0.25 },
+            '10.0.0.31': { x: 0.82, y: 0.6 },
+            '10.0.0.32': { x: 0.95, y: 0.55 }
+        };
+        
+        const hostColors = {
+            '10.0.0.100': '#ff9100',
+            '10.0.0.1': '#2196f3', '10.0.0.11': '#64b5f6', '10.0.0.12': '#64b5f6',
+            '10.0.0.2': '#9c27b0', '10.0.0.21': '#ce93d8', '10.0.0.22': '#ce93d8',
+            '10.0.0.3': '#f44336', '10.0.0.31': '#ef9a9a', '10.0.0.32': '#ef9a9a'
+        };
+        
+        const hostNames = {
+            '10.0.0.100': 'Display',
+            '10.0.0.1': 'GW-A', '10.0.0.11': 'Water', '10.0.0.12': 'Rain',
+            '10.0.0.2': 'GW-B', '10.0.0.21': 'Seismic', '10.0.0.22': 'Tilt',
+            '10.0.0.3': 'GW-C', '10.0.0.31': 'Temp', '10.0.0.32': 'Smoke'
+        };
+        
+        function getPos(id) {
+            const p = nodePositions[id] || { x: 0.5, y: 0.5 };
+            return { x: p.x * canvas.width, y: p.y * canvas.height };
+        }
+        
+        function drawTopology() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw edges (switch links)
+            ctx.strokeStyle = '#2a3a4a';
+            ctx.lineWidth = 2;
+            topology.edges.forEach(e => {
+                const s = getPos(e.source);
+                const d = getPos(e.target);
+                ctx.beginPath();
+                ctx.moveTo(s.x, s.y);
+                ctx.lineTo(d.x, d.y);
+                ctx.stroke();
+            });
+            
+            // Draw host-switch links
+            topology.nodes.filter(n => n.type === 'host').forEach(h => {
+                if (h.switch) {
+                    const hp = getPos(h.id);
+                    const sp = getPos(h.switch);
+                    ctx.strokeStyle = hostColors[h.id] || '#1a4a1a';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([3,3]);
+                    ctx.beginPath();
+                    ctx.moveTo(hp.x, hp.y);
+                    ctx.lineTo(sp.x, sp.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+            
+            // Draw active flow paths
+            activeFlowPaths.forEach((path, i) => {
+                if (path.src && path.dst) {
+                    const sp = getPos(path.src);
+                    const dp = getPos(path.dst);
+                    const colors = ['#00ff88', '#ff00ff', '#ffff00', '#00ffff'];
+                    ctx.strokeStyle = colors[i % colors.length];
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([8, 4]);
+                    ctx.lineDashOffset = -Date.now() / 50;
+                    ctx.beginPath();
+                    ctx.moveTo(sp.x, sp.y);
+                    ctx.lineTo(dp.x, dp.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+            
+            // Draw nodes
+            topology.nodes.forEach(n => {
+                const p = getPos(n.id);
+                const isDown = nodeStatus[n.id] === false;
+                
+                if (n.type === 'switch') {
+                    ctx.fillStyle = isDown ? '#4a1a1a' : '#0f4c75';
+                    ctx.fillRect(p.x - 22, p.y - 14, 44, 28);
+                    ctx.fillStyle = isDown ? '#888' : '#fff';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(n.id.toUpperCase(), p.x, p.y + 4);
+                } else {
+                    const color = hostColors[n.id] || '#00e676';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+                    ctx.fillStyle = isDown ? '#4a1a1a' : color;
+                    ctx.fill();
+                    if (isDown) {
+                        ctx.strokeStyle = '#ff1744';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '9px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(hostNames[n.id] || n.id.split('.').pop(), p.x, p.y + 3);
+                }
+            });
+            
+            document.getElementById('topo-info').textContent = 
+                `${topology.nodes.length} nodes`;
+        }
+        
+        // Update sensor display
+        function updateSensor(sensorId, value) {
+            const mapping = {
+                'flood_sensor_a1': 'water',
+                'flood_sensor_a2': 'rain',
+                'earthquake_sensor_b1': 'seismic',
+                'fire_sensor_c1': 'temp',
+                'fire_sensor_c2': 'smoke'
+            };
+            const key = mapping[sensorId];
+            if (key) {
+                document.getElementById(`val-${key}`).textContent = value;
+            }
+            
+            // POST to backend
+            fetch(`/api/sensors/${sensorId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({value: parseFloat(value), enabled: true})
+            });
+        }
+        
+        // Toggle node up/down
+        function toggleNode(nodeId) {
+            const current = nodeStatus[nodeId] !== false;
+            const newStatus = !current;
+            nodeStatus[nodeId] = newStatus;
+            
+            const btn = document.getElementById(`btn-${nodeId}`);
+            if (btn) {
+                btn.className = `node-btn ${newStatus ? 'up' : 'down'}`;
+            }
+            
+            fetch(`/api/nodes/${nodeId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({status: newStatus})
+            });
+            
+            drawTopology();
+        }
+        
+        // Fetch all data
+        async function fetchData() {
+            try {
+                // Stats
+                const stats = await fetch('/api/stats').then(r => r.json());
+                if (stats.total_packets !== undefined) {
+                    document.getElementById('controller-status').className = 'status-badge status-online';
+                    document.getElementById('controller-status').textContent = 'Controller: Online';
+                    document.getElementById('stat-packets').textContent = stats.total_packets.toLocaleString();
+                    document.getElementById('stat-flows').textContent = stats.total_flows.toLocaleString();
+                    document.getElementById('stat-emergency').textContent = stats.priority_breakdown?.emergency || 0;
+                    document.getElementById('stat-high').textContent = stats.priority_breakdown?.high || 0;
+                }
+                
+                // Topology
+                const topo = await fetch('/api/topology').then(r => r.json());
+                if (topo.nodes) {
+                    topology = topo;
+                    drawTopology();
+                }
+                
+                // Flows
+                const flows = await fetch('/api/flows').then(r => r.json());
+                if (Array.isArray(flows)) {
+                    recentFlows = flows;
+                    updateFlowTable(flows);
+                    
+                    // Update active flow paths (last 3 unique src-dst pairs)
+                    const paths = [];
+                    const seen = new Set();
+                    for (let i = flows.length - 1; i >= 0 && paths.length < 4; i--) {
+                        const f = flows[i];
+                        const key = `${f.src_ip}-${f.dst_ip}`;
+                        if (!seen.has(key) && f.src_ip && f.dst_ip) {
+                            seen.add(key);
+                            paths.push({src: f.src_ip, dst: f.dst_ip});
+                        }
+                    }
+                    activeFlowPaths = paths;
+                }
+                
+                // Switches
+                const switches = await fetch('/api/switches').then(r => r.json());
+                updateSwitchStats(switches);
+                
+                // Display data
+                const displayData = await fetch('/api/display').then(r => r.json());
+                updateDisplayOutput(displayData);
+                
+                document.getElementById('update-time').textContent = 
+                    new Date().toLocaleTimeString();
+                    
+            } catch (e) {
+                document.getElementById('controller-status').className = 'status-badge status-offline';
+                document.getElementById('controller-status').textContent = 'Controller: Offline';
+            }
+        }
+        
+        function updateFlowTable(flows) {
+            const tbody = document.getElementById('flow-table-body');
+            tbody.innerHTML = flows.slice(-25).reverse().map(f => `
+                <tr>
+                    <td>${f.timestamp?.split('T')[1]?.substring(0,8) || '--'}</td>
+                    <td>${f.switch}</td>
+                    <td class="name" style="color:${f.src_color || '#888'}">${f.src_name || f.src_ip}</td>
+                    <td class="name" style="color:${f.dst_color || '#888'}">${f.dst_name || f.dst_ip}</td>
+                    <td class="priority-${f.priority}">${(f.priority || 'normal').toUpperCase()}</td>
+                    <td>${f.size || 0}B</td>
+                </tr>
+            `).join('');
+            document.getElementById('flow-count').textContent = `${flows.length} flows`;
+        }
+        
+        function updateSwitchStats(switches) {
+            const container = document.getElementById('switch-stats');
+            container.innerHTML = Object.entries(switches).map(([name, s]) => `
+                <div style="display:flex;justify-content:space-between;padding:6px 8px;background:#1a1a2e;margin-bottom:4px;border-radius:4px;font-size:0.8em">
+                    <span style="color:#00d9ff">${name.toUpperCase()}</span>
+                    <span>In: <b>${s.packets_in}</b> Out: <b>${s.packets_out}</b></span>
+                </div>
+            `).join('');
+        }
+        
+        function updateDisplayOutput(data) {
+            const container = document.getElementById('display-output');
+            if (!Array.isArray(data) || data.length === 0) {
+                container.innerHTML = '<div style="color:#666;text-align:center;padding:20px">Waiting for sensor data...</div>';
+                return;
+            }
+            
+            container.innerHTML = data.slice(-15).reverse().map(d => {
+                const sd = d.sensor_data || d;
+                const isAlert = sd.is_emergency || d.is_emergency;
+                const type = sd.sensor_type || d.sensor_type || 'unknown';
+                const value = sd.value || d.value || 0;
+                const unit = sd.unit || d.unit || '';
+                const time = (d.received_at || d.timestamp || '').split('T')[1]?.substring(0,8) || '--';
+                
+                return `
+                    <div class="display-item ${isAlert ? 'alert' : ''}">
+                        <div>
+                            <span class="type">${type}</span>
+                            <span class="time">${time}</span>
+                        </div>
+                        <span class="value ${isAlert ? 'high' : ''}">${value} ${unit}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('display-count').textContent = `${data.length} readings`;
+        }
+        
+        // Initialize
+        resizeCanvas();
+        fetchData();
+        setInterval(fetchData, 1500);
+        setInterval(drawTopology, 100); // Animate flow paths
+    </script>
+</body>
+</html>
