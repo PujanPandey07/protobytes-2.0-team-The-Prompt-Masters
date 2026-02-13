@@ -1,5 +1,9 @@
+import { Zap, Battery, Router , ToggleLeft, ToggleRight } from 'lucide-react'
+
 export default function ControllerPanel({ 
-  currentIntent = 'balanced', 
+  currentIntent = 'balanced',
+  autoIntent = true,
+  onSetIntent,
   routes = {}, 
   gateways = {},
   packetStats = { forwarded: 0, dropped: 0, total: 0 }
@@ -10,47 +14,103 @@ export default function ControllerPanel({
       description: 'Minimizing latency for critical data',
       color: 'bg-red-500',
       textColor: 'text-red-400',
-      weights: { latency: 0.2, battery: 0.1, hop: 0.1 }
+      borderColor: 'border-red-500',
+      weights: { latency: 0.9, battery: 0.1 }
     },
     'low_latency': {
       label: 'ALERT',
       description: 'Balanced routing with priority',
       color: 'bg-yellow-500',
       textColor: 'text-yellow-400',
-      weights: { latency: 0.5, battery: 0.3, hop: 0.2 }
+      borderColor: 'border-yellow-500',
+      weights: { latency: 0.6, battery: 0.4 }
     },
     'balanced': {
       label: 'NORMAL',
       description: 'Battery-optimized routing',
       color: 'bg-green-500',
       textColor: 'text-green-400',
-      weights: { latency: 0.3, battery: 0.5, hop: 0.2 }
+      borderColor: 'border-green-500',
+      weights: { latency: 0.4, battery: 0.6 }
     }
   }
 
   const info = intentInfo[currentIntent] || intentInfo.balanced
 
+  const handleIntentClick = (intent) => {
+    if (onSetIntent) {
+      onSetIntent(intent, false)  // Set manual mode
+    }
+  }
+
+  const toggleAutoIntent = () => {
+    if (onSetIntent) {
+      onSetIntent(currentIntent, !autoIntent)
+    }
+  }
+
   return (
     <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-      <h3 className="text-white font-bold text-sm mb-3">SDN Controller</h3>
+      <h3 className="text-white font-bold text-sm mb-3 flex items-center gap-2">
+        <Router className="w-4 h-4 text-cyan-400"/>
+        SDN Controller
+      </h3>
       
-      {/* Auto Intent Display */}
+      {/* Intent Mode Selector */}
       <div className="mb-4 p-3 bg-slate-700/50 rounded-lg">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-slate-400 text-xs">Auto-Detected Intent</span>
-          <span className={`px-2 py-0.5 rounded text-xs font-bold text-white ${info.color}`}>
-            {info.label}
-          </span>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-slate-400 text-xs font-medium">Intent Mode</span>
+          <button 
+            onClick={toggleAutoIntent}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
+              autoIntent 
+                ? 'bg-cyan-600 text-white' 
+                : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+            }`}
+          >
+            {autoIntent ? <ToggleRight className="w-3 h-3"/> : <ToggleLeft className="w-3 h-3"/>}
+            {autoIntent ? 'AUTO' : 'MANUAL'}
+          </button>
         </div>
-        <p className="text-slate-300 text-xs">{info.description}</p>
         
-        {/* Weight Display */}
-        <div className="mt-2 pt-2 border-t border-slate-600">
-          <div className="text-slate-500 text-[10px] mb-1">COST WEIGHTS:</div>
-          <div className="flex gap-2 text-[10px]">
-            <span className="text-cyan-400">Latency: {info.weights.latency}</span>
-            <span className="text-amber-400">Battery: {info.weights.battery}</span>
-            <span className="text-purple-400">Hop: {info.weights.hop}</span>
+        {/* Intent Buttons */}
+        <div className="grid grid-cols-3 gap-1.5 mb-3">
+          {Object.entries(intentInfo).map(([key, {label, color, borderColor}]) => (
+            <button
+              key={key}
+              onClick={() => handleIntentClick(key)}
+              disabled={autoIntent}
+              className={`px-2 py-1.5 rounded text-[10px] font-bold transition-all ${
+                currentIntent === key 
+                  ? `${color} text-white shadow-lg scale-105` 
+                  : autoIntent 
+                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                    : `bg-slate-700 text-slate-300 hover:bg-slate-600 border ${borderColor} border-opacity-50`
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        
+        {/* Current Intent Display */}
+        <div className={`p-2 rounded border-l-2 ${info.borderColor} bg-slate-800/50`}>
+          <div className="flex items-center justify-between mb-1">
+            <span className={`${info.textColor} text-xs font-bold`}>{info.label}</span>
+            <span className="text-slate-500 text-[9px]">{autoIntent ? 'Auto-detected' : 'Manual'}</span>
+          </div>
+          <p className="text-slate-400 text-[10px]">{info.description}</p>
+          
+          {/* Weight Display */}
+          <div className="flex gap-3 mt-2 text-[9px]">
+            <span className="flex items-center gap-1">
+              <Zap className="w-3 h-3 text-cyan-400"/>
+              <span className="text-cyan-400">Latency: {info.weights.latency}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <Battery className="w-3 h-3 text-amber-400"/>
+              <span className="text-amber-400">Battery: {info.weights.battery}</span>
+            </span>
           </div>
         </div>
       </div>
@@ -115,9 +175,8 @@ export default function ControllerPanel({
                     {route.path?.join(' → ')}
                   </div>
                   <div className="flex gap-3 mt-1 text-[9px] text-slate-400">
-                    <span>Latency: {route.latency}ms</span>
-                    <span>Hops: {route.hops}</span>
                     <span>Cost: {route.cost}</span>
+                    <span>Intent: {route.intent}</span>
                   </div>
                 </div>
               )

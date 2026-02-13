@@ -1,19 +1,23 @@
-import { Activity, Wifi, WifiOff, RotateCcw, Play, Pause } from 'lucide-react'
+import { Activity, Wifi, WifiOff, RotateCcw, Play, Pause, AlertTriangle, Shield, Zap } from 'lucide-react'
 
-const INTENT_LABELS = { 
-  balanced: 'Balanced', 
-  low_latency: 'Low Latency', 
-  low_power: 'Low Power', 
-  high_priority: 'High Priority' 
-}
-const INTENT_COLORS = { 
-  balanced: 'bg-blue-500', 
-  low_latency: 'bg-green-500', 
-  low_power: 'bg-yellow-500', 
-  high_priority: 'bg-red-500' 
+const INTENT_CONFIG = { 
+  balanced: { label: 'NORMAL', color: 'bg-green-500', icon: Shield },
+  low_latency: { label: 'ALERT', color: 'bg-yellow-500', icon: Zap },
+  high_priority: { label: 'EMERGENCY', color: 'bg-red-500', icon: AlertTriangle }
 }
 
-export default function Header({ connected, currentIntent, onResetSimulation, autoPackets, onToggleAutoPackets }) {
+export default function Header({ 
+  connected, 
+  currentIntent, 
+  autoIntent = true,
+  onSetIntent,
+  onResetSimulation, 
+  autoPackets, 
+  onToggleAutoPackets 
+}) {
+  const intent = INTENT_CONFIG[currentIntent] || INTENT_CONFIG.balanced
+  const IntentIcon = intent.icon
+
   return (
     <header className="bg-slate-800 border-b border-slate-700 px-6 py-4">
       <div className="container mx-auto flex items-center justify-between flex-wrap gap-4">
@@ -26,11 +30,15 @@ export default function Header({ connected, currentIntent, onResetSimulation, au
         </div>
         
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Routing Intent */}
+          {/* Routing Intent Display */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-400">Intent:</span>
-            <span className={`px-3 py-1 rounded-full text-xs font-medium text-white ${INTENT_COLORS[currentIntent]}`}>
-              {INTENT_LABELS[currentIntent]}
+            <span className="text-sm text-slate-400">Mode:</span>
+            <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white ${intent.color} ${currentIntent === 'high_priority' ? 'animate-pulse' : ''}`}>
+              <IntentIcon className="w-3.5 h-3.5"/>
+              {intent.label}
+            </span>
+            <span className="text-[10px] text-slate-500">
+              ({autoIntent ? 'auto' : 'manual'})
             </span>
           </div>
           
