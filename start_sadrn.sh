@@ -59,7 +59,7 @@ cleanup() {
     banner "CLEANUP"
     
     # Kill controller
-    pkill -f "ryu-manager" 2>/dev/null && ok "Stopped Ryu controller" || true
+    pkill -f "ryu.cmd.manager" 2>/dev/null && ok "Stopped Ryu controller" || true
     
     # Kill dashboard processes
     pkill -f "react-dashboard/backend/app.py" 2>/dev/null && ok "Stopped dashboard backend" || true
@@ -96,7 +96,7 @@ start_controller() {
     banner "STARTING SDN CONTROLLER (port 6653)"
     
     cd "$SADRN_DIR/controller"
-    ryu-manager --ofp-tcp-listen-port 6653 sadrn_controller.py > /tmp/controller.log 2>&1 &
+    python3 -m ryu.cmd.manager --ofp-tcp-listen-port 6653 sadrn_controller.py > /tmp/controller.log 2>&1 &
     local pid=$!
     echo "$pid" > "$SADRN_DIR/.controller.pid"
     sleep 3
@@ -199,7 +199,7 @@ show_status() {
     echo -e "  ${BOLD}Services:${NC}"
     
     # Controller
-    if pgrep -f "ryu-manager" > /dev/null 2>&1; then
+    if pgrep -f "ryu.cmd.manager" > /dev/null 2>&1; then
         ok "SDN Controller    : http://localhost:8080 (running)"
     else
         fail "SDN Controller    : NOT running"
@@ -249,7 +249,7 @@ show_status() {
 trap_cleanup() {
     echo ""
     banner "SHUTTING DOWN"
-    pkill -f "ryu-manager" 2>/dev/null && ok "Stopped controller" || true
+    pkill -f "ryu.cmd.manager" 2>/dev/null && ok "Stopped controller" || true
     pkill -f "react-dashboard/backend/app.py" 2>/dev/null && ok "Stopped dashboard backend" || true
     pkill -f "node.*vite" 2>/dev/null && ok "Stopped React frontend" || true
     mn -c 2>/dev/null || true

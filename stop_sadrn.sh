@@ -27,7 +27,7 @@ for pidfile in .controller.pid .dashboard.pid .react.pid .mininet.pid; do
 done
 
 # Kill remaining processes
-pkill -f "ryu-manager" 2>/dev/null && echo -e "  ${GREEN}✓${NC} Stopped Ryu controller" || true
+pkill -f "ryu.cmd.manager" 2>/dev/null && echo -e "  ${GREEN}✓${NC} Stopped Ryu controller" || true
 pkill -f "react-dashboard/backend/app.py" 2>/dev/null && echo -e "  ${GREEN}✓${NC} Stopped dashboard backend" || true
 pkill -f "dashboard/app.py" 2>/dev/null || true
 pkill -f "node.*vite" 2>/dev/null && echo -e "  ${GREEN}✓${NC} Stopped React frontend" || true
