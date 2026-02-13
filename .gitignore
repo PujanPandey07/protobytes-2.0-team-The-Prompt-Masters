@@ -1,0 +1,216 @@
+# ===========================
+# SADRN Project .gitignore
+# ===========================
+
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+.env/
+env.bak/
+venv.bak/
+
+# Pytest / Coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ===========================
+# Node.js / React / Vite
+# ===========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Vite build output
+dist/
+dist-ssr/
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===========================
+# Environment & Secrets
+# ===========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+secrets.json
+config.local.py
+config.local.json
+
+# ===========================
+# SADRN Specific
+# ===========================
+# PID files
+*.pid
+.react.pid
+.controller.pid
+.mininet.pid
+
+# Log files
+*.log
+logs/
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Mininet / OpenFlow temporary files
+*.pcap
+*.dump
+
+# ===========================
+# OS Generated
+# ===========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# ===========================
+# IDEs & Editors
+# ===========================
+# JetBrains (PyCharm, WebStorm)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# VS Code (optional - keep some)
+.vscode-server/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+auto-save-list
+tramp
+.\#*
+
+# ===========================
+# Build & Compiled
+# ===========================
+*.o
+*.a
+*.la
+*.lo
+*.obj
+*.dylib
+
+# Autotools
+autom4te.cache/
+config.log
+config.status
+Makefile.in
+aclocal.m4
+configure
+stamp-h1
+
+# ===========================
+# Testing & Debug
+# ===========================
+.pytest_cache/
+.benchmarks/
+test-results/
+cypress/videos/
+cypress/screenshots/
+
+# ===========================
+# Misc
+# ===========================
+*.tmp
+*.temp
+*.bak
+.vagrant/

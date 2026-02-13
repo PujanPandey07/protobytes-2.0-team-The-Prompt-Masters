@@ -1,0 +1,19 @@
+# SADRN - Software Defined Adaptive Disaster Response Network
+# Python dependencies
+
+# SDN Controller
+ryu>=4.34
+networkx>=2.6
+
+# Web Dashboard
+flask>=2.0
+flask-socketio>=5.0
+flask-cors>=3.0
+python-socketio>=5.0
+eventlet>=0.33
+
+# Network utilities
+scapy>=2.4
+
+# Optional: for development
+requests>=2.25

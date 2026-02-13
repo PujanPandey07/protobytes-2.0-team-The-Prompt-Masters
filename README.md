@@ -1,458 +1,442 @@
 # SADRN — Software-Defined Adaptive Disaster Response Network
 
-A real-time disaster monitoring system built on **Mininet** and **OpenFlow SDN**.
-6 sensors across 3 disaster zones send data through gateways to a central
-display, all visualised in a React dashboard.
+<div align="center">
+
+![SADRN Banner](docs/images/sadrn_banner.png)
+
+*Real-time disaster monitoring powered by SDN technology*
+
+[![Mininet](https://img.shields.io/badge/Mininet-2.3+-blue.svg)](http://mininet.org/)
+[![Ryu](https://img.shields.io/badge/Ryu-SDN-orange.svg)](https://ryu-sdn.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://reactjs.org/)
+[![Python](https://img.shields.io/badge/Python-3.8+-green.svg)](https://python.org/)
+
+</div>
 
 ---
 
-## Architecture
+## 📋 Overview
 
-```
-                        ┌──────────┐
-                        │ Display  │  10.0.0.100
-                        │  Server  │  (UDP :9001)
-                        └────┬─────┘
-                             │
-                     ┌───────┴───────┐
-              ┌──────┤  S2 (Core-2)  ├──────┐
-              │      └───────────────┘      │
-        ┌─────┴─────┐                ┌──────┴────┐
-        │ S1 (Core-1)├──────────────┤ S3 (Core-3)│
-        └─────┬─────┘   core mesh   └──────┬─────┘
-              │                             │
-        ┌─────┴─────┐                ┌──────┴──────┐
-        │ S4 (Flood) │               │ S6 (Fire)   │
-        └──┬──┬──┬──┘                └──┬──┬──┬───┘
-           │  │  │         ┌─────┐      │  │  │
-     gw_a──┘  │  └──rain   │ S5  │  gw_c──┘  │  └──smoke
-        water──┘     (EQ)   └┬─┬─┬┘     temp──┘
-                        gw_b─┘ │ └─tilt
-                        seismic┘
+**SADRN** is a real-time disaster monitoring and response system built on **Software-Defined Networking (SDN)**. It simulates a distributed sensor network across three disaster zones (Flood, Earthquake, Fire), with data flowing through intelligent gateways to a central display server—all visualized through a modern React dashboard.
 
-  Flood Zone (S4)       Earthquake Zone (S5)      Fire Zone (S6)
-  ├─ gw_a   10.0.0.1    ├─ gw_b    10.0.0.2      ├─ gw_c    10.0.0.3
-  ├─ water  10.0.0.11   ├─ seismic 10.0.0.21     ├─ temp    10.0.0.31
-  └─ rain   10.0.0.12   └─ tilt    10.0.0.22     └─ smoke   10.0.0.32
-```
+### Key Features
 
-**Data flow:** Sensor → Gateway (UDP :9000) → Display Server (UDP :9001)
+- 🌐 **6-Switch SDN Topology** — Resilient mesh network with automatic failover
+- 📡 **6 Disaster Sensors** — Water level, rainfall, seismic, tilt, temperature, smoke
+- 🚨 **Real-time Alerts** — Threshold-based emergency detection and alarms
+- 📊 **React Dashboard** — Live visualization of network topology and sensor data
+- 🔄 **Dynamic Routing** — Ryu controller with intelligent flow management
+- 🔋 **Battery Simulation** — Realistic sensor battery monitoring
 
 ---
 
-## Project Structure
+## 🏗️ System Architecture
+
+![System Architecture](docs/images/architecture.png)
 
 ```
-SADRN/
-├── topo_working.py            # Main topology — run this
-├── hosts/
-│   ├── sensor.py              # 6 sensor types (flood, eq, fire)
-│   └── gateway.py             # Gateway aggregation + forwarding
-├── display/
-│   └── display_server.py      # Central UDP display/alarm server
-├── controller/
-│   └── sadrn_controller.py    # Ryu SDN controller (optional)
-├── dashboard/
-│   └── app.py                 # Flask backend API (port 5001)
-├── dashboard-react/           # React frontend (port 3000)
-│   ├── src/
-│   ├── vite.config.js
-│   └── package.json
-├── run_all.sh                 # ★ Master launch script
-└── README.md                  # This file
+                           ┌──────────────┐
+                           │   Display    │  10.0.0.100
+                           │   Server     │  (UDP :9001)
+                           └──────┬───────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    │             │             │
+              ┌─────┴─────┐ ┌─────┴─────┐ ┌─────┴─────┐
+              │ S1 Core-1 │ │ S2 Core-2 │ │ S3 Core-3 │
+              └─────┬─────┘ └─────┬─────┘ └─────┬─────┘
+                    │             │             │
+                    └──────┬──────┴──────┬──────┘
+                           │  Core Mesh  │
+              ┌────────────┼─────────────┼────────────┐
+              │            │             │            │
+        ┌─────┴─────┐ ┌────┴────┐ ┌──────┴──────┐
+        │ S4 Flood  │ │ S5 EQ   │ │ S6 Fire    │
+        └─────┬─────┘ └────┬────┘ └──────┬─────┘
+              │            │             │
+    ┌─────────┼─────┐  ┌───┼───┐   ┌─────┼─────────┐
+    │         │     │  │   │   │   │     │         │
+  gw_a    water  rain  gw_b seismic tilt  gw_c   temp  smoke
+10.0.0.1  10.0.0.11    10.0.0.2 10.0.0.21   10.0.0.3 10.0.0.31
+          10.0.0.12           10.0.0.22            10.0.0.32
 ```
+
+### Disaster Zones
+
+| Zone | Switch | Gateway | Sensors | Monitors |
+|------|--------|---------|---------|----------|
+| **Flood** | S4 | gw_a (10.0.0.1) | water_a1, rain_a2 | Water level, Rainfall |
+| **Earthquake** | S5 | gw_b (10.0.0.2) | seismic_b1, tilt_b2 | Seismic activity, Ground tilt |
+| **Fire** | S6 | gw_c (10.0.0.3) | temp_c1, smoke_c2 | Temperature, Smoke density |
 
 ---
 
-## Prerequisites
+## 📊 Dashboard Preview
 
-| Software       | Version | Check Command        |
-|----------------|---------|----------------------|
-| Mininet        | >= 2.3  | `mn --version`       |
-| Python         | >= 3.8  | `python3 --version`  |
-| Open vSwitch   | >= 2.9  | `ovs-vsctl --version`|
-| Node.js        | >= 16   | `node --version`     |
-| npm            | >= 8    | `npm --version`      |
+![Dashboard Screenshot](docs/images/dashboard.png)
 
-### Install Python dependencies
+The React dashboard provides:
+- **Live Topology View** — Interactive network visualization
+- **Sensor Data Panels** — Real-time readings with status indicators
+- **Alert System** — Emergency notifications and threshold warnings
+- **Battery Monitor** — Sensor battery levels
+- **Path Analysis** — Active data flow paths
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+| Software | Version | Check Command |
+|----------|---------|---------------|
+| Mininet | >= 2.3 | `mn --version` |
+| Python | >= 3.8 | `python3 --version` |
+| Open vSwitch | >= 2.9 | `ovs-vsctl --version` |
+| Node.js | >= 16 | `node --version` |
+| npm | >= 8 | `npm --version` |
+| Ryu SDN | >= 4.34 | `ryu-manager --version` |
+
+### Installation
 
 ```bash
-pip3 install flask flask-cors flask-socketio requests
-```
-
-### Install React dependencies
-
-```bash
-cd dashboard-react && npm install
-```
-
----
-
-## Quick Start (One Command)
-
-```bash
+# Navigate to SADRN directory
 cd ~/SADRN
-sudo bash run_all.sh
+
+# Install Python dependencies
+pip3 install -r requirements.txt
+
+# Install React dashboard dependencies
+cd react-dashboard/frontend && npm install
+cd ../backend && pip3 install -r requirements.txt
+cd ../..
 ```
 
-This single command will:
-1. Clean up any old processes
-2. Start the **Dashboard Backend** (Flask API on port 5001)
-3. Start the **React Frontend** (Vite dev server on port 3000)
-4. Start the **Mininet 6-switch topology** with STP
-5. Auto-start all **sensors, gateways, and display server**
-6. Drop you into the Mininet CLI
+### Start the Complete System
 
-When you `exit` the Mininet CLI, everything shuts down automatically.
+```bash
+# Start everything with one command
+sudo bash start_sadrn.sh
+```
+
+This will:
+1. ✅ Clean up any previous instances
+2. ✅ Start the **Ryu SDN Controller** (port 6653)
+3. ✅ Start the **Dashboard Backend** (port 5000)
+4. ✅ Start the **React Frontend** (port 3000)
+5. ✅ Start the **Mininet Topology** with all sensors/gateways
+6. ✅ Drop you into the Mininet CLI
+
+**Open your browser:** `http://localhost:3000`
 
 ---
 
-## run_all.sh Options
+## 📖 Usage Guide
 
-| Command                  | What it does                            |
-|--------------------------|-----------------------------------------|
-| `sudo bash run_all.sh`  | Start everything (dashboard + Mininet)  |
-| `bash run_all.sh --dash`| Dashboard only (no sudo needed)         |
-| `sudo bash run_all.sh --topo` | Mininet only (no dashboard)        |
-| `bash run_all.sh --stop`| Kill all SADRN processes                |
-| `bash run_all.sh --status` | Show status of all components        |
-| `bash run_all.sh --help`| Show usage help                         |
+### Script Commands
 
----
+| Command | Description |
+|---------|-------------|
+| `sudo bash start_sadrn.sh` | Start complete system |
+| `bash start_sadrn.sh --dashboard` | Start dashboard only (no sudo) |
+| `sudo bash start_sadrn.sh --topology` | Start Mininet topology only |
+| `bash start_sadrn.sh --controller` | Start SDN controller only |
+| `bash start_sadrn.sh --status` | Show status of all components |
+| `bash start_sadrn.sh --stop` | Stop all SADRN processes |
+| `bash stop_sadrn.sh` | Stop all SADRN processes |
 
-## Manual Start (Step by Step)
+### Mininet CLI Commands
 
-If you prefer to start each component individually:
-
-### Step 1 — Start Dashboard Backend
-
-```bash
-cd ~/SADRN
-python3 dashboard/app.py &
-# Verify: curl http://localhost:5001/api/topology
-```
-
-### Step 2 — Start React Frontend
+Once in the Mininet CLI (`mininet>`):
 
 ```bash
-cd ~/SADRN/dashboard-react
-npm run dev &
-# Verify: curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
-# Should print 200
-```
-
-### Step 3 — Start Mininet Topology
-
-```bash
-cd ~/SADRN
-sudo python3 topo_working.py
-```
-
-This starts:
-- 6 OVS switches (s1-s6) with STP enabled
-- 3 gateways (gw_a, gw_b, gw_c)
-- 6 sensors (water_a1, rain_a2, seismic_b1, tilt_b2, temp_c1, smoke_c2)
-- 1 display server (display)
-- All services auto-started
-
-You will land at the `mininet>` prompt.
-
-### Step 4 — Verify
-
-```bash
+# Test network connectivity
 mininet> pingall
-# Expected: 0% dropped (90/90 received)
-```
 
----
+# Check specific paths
+mininet> gw_a ping -c 3 10.0.0.100     # Gateway to Display
+mininet> water_a1 ping -c 3 10.0.0.1   # Sensor to Gateway
 
-## Starting Individual Components from Mininet CLI
-
-If services crash or you want to restart them manually:
-
-### Restart Display Server
-```bash
-mininet> display pkill -f display_server
-mininet> display python3 -u /home/mininet/SADRN/display/display_server.py 9001 > /tmp/display.log 2>&1 &
-```
-
-### Restart a Gateway
-```bash
-# Gateway A (flood zone)
-mininet> gw_a pkill -f gateway
-mininet> gw_a python3 /home/mininet/SADRN/hosts/gateway.py gw_a 10.0.0.100 \
-    --listen-port 9000 --display-port 9001 > /tmp/gw_a.log 2>&1 &
-
-# Gateway B (earthquake zone)
-mininet> gw_b pkill -f gateway
-mininet> gw_b python3 /home/mininet/SADRN/hosts/gateway.py gw_b 10.0.0.100 \
-    --listen-port 9000 --display-port 9001 > /tmp/gw_b.log 2>&1 &
-
-# Gateway C (fire zone)
-mininet> gw_c pkill -f gateway
-mininet> gw_c python3 /home/mininet/SADRN/hosts/gateway.py gw_c 10.0.0.100 \
-    --listen-port 9000 --display-port 9001 > /tmp/gw_c.log 2>&1 &
-```
-
-### Restart a Sensor
-```bash
-# Flood sensors (send to gw_a = 10.0.0.1)
-mininet> water_a1 python3 /home/mininet/SADRN/hosts/sensor.py flood_water \
-    10.0.0.1 --port 9000 --interval 3 > /tmp/water_a1.log 2>&1 &
-
-mininet> rain_a2 python3 /home/mininet/SADRN/hosts/sensor.py flood_rain \
-    10.0.0.1 --port 9000 --interval 3 > /tmp/rain_a2.log 2>&1 &
-
-# Earthquake sensors (send to gw_b = 10.0.0.2)
-mininet> seismic_b1 python3 /home/mininet/SADRN/hosts/sensor.py eq_seismic \
-    10.0.0.2 --port 9000 --interval 3 > /tmp/seismic_b1.log 2>&1 &
-
-mininet> tilt_b2 python3 /home/mininet/SADRN/hosts/sensor.py eq_tilt \
-    10.0.0.2 --port 9000 --interval 3 > /tmp/tilt_b2.log 2>&1 &
-
-# Fire sensors (send to gw_c = 10.0.0.3)
-mininet> temp_c1 python3 /home/mininet/SADRN/hosts/sensor.py fire_temp \
-    10.0.0.3 --port 9000 --interval 3 > /tmp/temp_c1.log 2>&1 &
-
-mininet> smoke_c2 python3 /home/mininet/SADRN/hosts/sensor.py fire_smoke \
-    10.0.0.3 --port 9000 --interval 3 > /tmp/smoke_c2.log 2>&1 &
-```
-
----
-
-## Testing & Verification
-
-### 1. Network Connectivity
-
-```bash
-mininet> pingall
-# Expected: 0% dropped (90/90 received)
-
-# Test specific paths
-mininet> gw_a ping -c 3 10.0.0.100     # Flood gateway -> Display
-mininet> water_a1 ping -c 3 10.0.0.1    # Sensor -> Its gateway
-mininet> seismic_b1 ping -c 3 10.0.0.100 # Cross-zone: EQ sensor -> Display
-```
-
-### 2. Data Flow (Sensor -> Gateway -> Display)
-
-```bash
-# Watch display server receive data in real time
+# View live sensor data
 mininet> sh tail -f /tmp/display.log
 
-# Expected output:
-# [11:44:28] gw_a | flood_water  |   8.37 m       | emergency [ALARM]
-# [11:44:28] gw_a | flood_rain   |  71.71 mm/h    | emergency [ALARM]
-# [11:44:28] gw_b | eq_seismic   |   3.47 Richter | normal    [OK]
-# [11:44:29] gw_b | eq_tilt      |  13.96 deg     | normal    [OK]
-# [11:44:29] gw_c | fire_temp    |  85.88 C       | emergency [ALARM]
-# [11:44:29] gw_c | fire_smoke   | 967.27 ppm     | emergency [ALARM]
-```
-
-### 3. Individual Service Logs
-
-```bash
-# Gateway logs (should show receive + forward)
-mininet> sh tail -5 /tmp/gw_a.log
-mininet> sh tail -5 /tmp/gw_b.log
-mininet> sh tail -5 /tmp/gw_c.log
-
-# Sensor logs
-mininet> sh tail -5 /tmp/water_a1.log
-mininet> sh tail -5 /tmp/seismic_b1.log
-mininet> sh tail -5 /tmp/temp_c1.log
-```
-
-### 4. Dashboard API
-
-```bash
-mininet> sh curl -s http://localhost:5001/api/topology | python3 -m json.tool | head -20
-mininet> sh curl -s http://localhost:5001/api/paths  | python3 -m json.tool | head -20
-mininet> sh curl -s http://localhost:5001/api/battery
-mininet> sh curl -s http://localhost:5001/api/emergency
-```
-
-### 5. React Dashboard
-
-Open **http://localhost:3000** in a browser.
-
-(If using a VM, forward port 3000 or use the VM's IP address.)
-
-### 6. Switch Flow Tables
-
-```bash
-# Flows on each switch
+# Check switch flows
 mininet> sh ovs-ofctl dump-flows s1
-mininet> sh ovs-ofctl dump-flows s4
 
-# STP status
-mininet> sh ovs-vsctl get bridge s1 stp_enable
-# true
-
-# All switch details
-mininet> sh ovs-vsctl show
-```
-
-### 7. Log File Summary
-
-```bash
-mininet> sh wc -l /tmp/display.log /tmp/gw_a.log /tmp/gw_b.log /tmp/gw_c.log
-```
-
----
-
-## Network Details
-
-### IP Address Map
-
-| Host       | IP          | Role                 | Switch | Zone       |
-|------------|-------------|----------------------|--------|------------|
-| gw_a       | 10.0.0.1    | Gateway              | S4     | Flood      |
-| gw_b       | 10.0.0.2    | Gateway              | S5     | Earthquake |
-| gw_c       | 10.0.0.3    | Gateway              | S6     | Fire       |
-| water_a1   | 10.0.0.11   | Water Level Sensor   | S4     | Flood      |
-| rain_a2    | 10.0.0.12   | Rainfall Sensor      | S4     | Flood      |
-| seismic_b1 | 10.0.0.21   | Seismograph          | S5     | Earthquake |
-| tilt_b2    | 10.0.0.22   | Tilt Sensor          | S5     | Earthquake |
-| temp_c1    | 10.0.0.31   | Temperature Sensor   | S6     | Fire       |
-| smoke_c2   | 10.0.0.32   | Smoke Detector       | S6     | Fire       |
-| display    | 10.0.0.100  | Display/Alarm Server | S2     | Central    |
-
-### Switch Topology
-
-| Switch | Role    | Connected To                              |
-|--------|---------|-------------------------------------------|
-| S1     | Core-1  | S2, S3 (mesh), S4 (flood zone)            |
-| S2     | Core-2  | S1, S3 (mesh), S5 (EQ zone), Display      |
-| S3     | Core-3  | S1, S2 (mesh), S6 (fire zone)             |
-| S4     | Flood   | S1, gw_a, water_a1, rain_a2               |
-| S5     | EQ      | S2, gw_b, seismic_b1, tilt_b2             |
-| S6     | Fire    | S3, gw_c, temp_c1, smoke_c2               |
-
-### Ports & Protocols
-
-| Service            | Port | Protocol |
-|--------------------|------|----------|
-| Sensor -> Gateway  | 9000 | UDP      |
-| Gateway -> Display | 9001 | UDP      |
-| Dashboard Backend  | 5001 | HTTP     |
-| React Frontend     | 3000 | HTTP     |
-| OpenFlow Controller| 6653 | TCP      |
-
-### Sensor Thresholds
-
-| Sensor Type  | Range   | Alert Threshold | Unit    |
-|--------------|---------|-----------------|---------|
-| flood_water  | 0-10    | >= 7            | metres  |
-| flood_rain   | 0-100   | >= 60           | mm/h    |
-| eq_seismic   | 0-10    | >= 5            | Richter |
-| eq_tilt      | 0-45    | >= 15           | degrees |
-| fire_temp    | 0-100   | >= 55           | C       |
-| fire_smoke   | 0-1000  | >= 300          | ppm     |
-
----
-
-## Troubleshooting
-
-### "X" in pingall (packet loss)
-
-```bash
-# STP may not have converged. Wait 15 seconds and retry:
-mininet> pingall
-
-# If still failing, check STP is enabled:
-mininet> sh ovs-vsctl get bridge s1 stp_enable
-# Should print: true
-```
-
-### Display server not receiving data
-
-```bash
-# Check if running
-mininet> display ps aux | grep display_server
-
-# Check log for errors
-mininet> sh cat /tmp/display.log
-
-# Restart
-mininet> display pkill -f display_server
-mininet> display python3 -u /home/mininet/SADRN/display/display_server.py 9001 \
-    > /tmp/display.log 2>&1 &
-```
-
-### Gateway not forwarding
-
-```bash
-# Check log
-mininet> sh tail -10 /tmp/gw_a.log
-
-# Restart
-mininet> gw_a pkill -f gateway
-mininet> gw_a python3 /home/mininet/SADRN/hosts/gateway.py gw_a 10.0.0.100 \
-    --listen-port 9000 --display-port 9001 > /tmp/gw_a.log 2>&1 &
-```
-
-### Dashboard not loading
-
-```bash
-# Check backend
-curl http://localhost:5001/api/topology
-# Should return JSON
-
-# Check React
-curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
-# Should return 200
-
-# Restart
-pkill -f "dashboard/app.py"
-cd ~/SADRN && python3 dashboard/app.py &
-pkill -f "npm run dev"
-cd ~/SADRN/dashboard-react && npm run dev &
-```
-
-### Port already in use
-
-```bash
-sudo fuser -k 3000/tcp   # React
-sudo fuser -k 5001/tcp   # Dashboard backend
-```
-
-### Full reset
-
-```bash
-sudo mn -c
-pkill -f "dashboard/app.py"
-killall node 2>/dev/null
-sudo bash ~/SADRN/run_all.sh
-```
-
----
-
-## Stopping the System
-
-From the Mininet CLI:
-```bash
+# Exit (will cleanup automatically)
 mininet> exit
 ```
 
-The `run_all.sh` script automatically stops dashboard and React on exit.
+### Manual Component Control
 
-Manual stop:
+Start components individually:
+
 ```bash
-bash ~/SADRN/run_all.sh --stop
+# Terminal 1: Controller
+cd ~/SADRN/controller
+ryu-manager --ofp-tcp-listen-port 6653 sadrn_controller.py
+
+# Terminal 2: Dashboard Backend
+cd ~/SADRN/react-dashboard/backend
+python3 app.py
+
+# Terminal 3: React Frontend
+cd ~/SADRN/react-dashboard/frontend
+npm run dev
+
+# Terminal 4: Mininet Topology
+cd ~/SADRN
+sudo python3 topology.py
 ```
 
 ---
 
-## File Reference
+## 🧪 Test Cases
 
-| File                           | Purpose                                                  |
-|--------------------------------|----------------------------------------------------------|
-| `topo_working.py`              | **Main topology** - 6 switches, STP, auto-starts services |
-| `hosts/sensor.py`              | Sensor node - generates realistic data with drift/spikes |
-| `hosts/gateway.py`             | Gateway node - receives sensors, forwards to display     |
-| `display/display_server.py`    | Display server - UDP listener, prints data + alarms      |
-| `dashboard/app.py`             | Flask API backend - topology/paths/battery/emergency     |
-| `dashboard-react/`             | React frontend - visual network topology dashboard       |
-| `controller/sadrn_controller.py` | Ryu SDN controller (optional, for advanced use)        |
-| `run_all.sh`                   | **Master launch script** - starts everything             |
+### 1. Network Connectivity Test
+
+```bash
+mininet> pingall
+# Expected: 0% dropped (all hosts reachable)
+```
+
+### 2. Sensor-to-Gateway Communication
+
+```bash
+# From any sensor, ping its gateway
+mininet> water_a1 ping -c 3 10.0.0.1   # Flood sensor → Gateway A
+mininet> seismic_b1 ping -c 3 10.0.0.2 # EQ sensor → Gateway B
+mininet> temp_c1 ping -c 3 10.0.0.3    # Fire sensor → Gateway C
+```
+
+### 3. Gateway-to-Display Communication
+
+```bash
+# Each gateway should reach the display server
+mininet> gw_a ping -c 3 10.0.0.100
+mininet> gw_b ping -c 3 10.0.0.100
+mininet> gw_c ping -c 3 10.0.0.100
+```
+
+### 4. Cross-Zone Communication
+
+```bash
+# Sensors can reach other zones' gateways
+mininet> water_a1 ping -c 3 10.0.0.2   # Flood sensor → EQ gateway
+mininet> seismic_b1 ping -c 3 10.0.0.3 # EQ sensor → Fire gateway
+```
+
+### 5. Data Flow Verification
+
+```bash
+# Watch live sensor data at display server
+mininet> sh tail -f /tmp/display.log
+
+# Expected output format:
+# [11:44:28] gw_a | flood_water  |   8.37 m       | emergency [ALARM]
+# [11:44:28] gw_b | eq_seismic   |   3.47 Richter | normal    [OK]
+# [11:44:29] gw_c | fire_temp    |  85.88 C       | emergency [ALARM]
+```
+
+### 6. API Endpoint Tests
+
+```bash
+# Topology data
+curl http://localhost:5000/api/topology | python3 -m json.tool
+
+# Sensor readings
+curl http://localhost:5000/api/sensors | python3 -m json.tool
+
+# Emergency status
+curl http://localhost:5000/api/emergency | python3 -m json.tool
+
+# Battery levels
+curl http://localhost:5000/api/battery | python3 -m json.tool
+```
+
+### 7. Dashboard Functionality
+
+1. Open `http://localhost:3000` in browser
+2. Verify topology visualization loads
+3. Check sensor data panels update in real-time
+4. Test emergency alert notifications
+5. Verify battery level indicators
+
+---
+
+## 🔧 Configuration
+
+### Sensor Thresholds
+
+| Sensor Type | Range | Alert Threshold | Unit |
+|-------------|-------|-----------------|------|
+| flood_water | 0-10 | >= 7 | metres |
+| flood_rain | 0-100 | >= 60 | mm/h |
+| eq_seismic | 0-10 | >= 5 | Richter |
+| eq_tilt | 0-45 | >= 15 | degrees |
+| fire_temp | 0-100 | >= 55 | °C |
+| fire_smoke | 0-1000 | >= 300 | ppm |
+
+### Network Ports
+
+| Service | Port | Protocol |
+|---------|------|----------|
+| Sensor → Gateway | 9000 | UDP |
+| Gateway → Display | 9001 | UDP |
+| Dashboard Backend | 5000 | HTTP |
+| React Frontend | 3000 | HTTP |
+| OpenFlow Controller | 6653 | TCP |
+| Controller REST | 8080 | HTTP |
+
+### IP Address Map
+
+| Host | IP Address | Role | Zone |
+|------|------------|------|------|
+| display | 10.0.0.100 | Central Display Server | Core |
+| gw_a | 10.0.0.1 | Flood Gateway | Flood |
+| gw_b | 10.0.0.2 | Earthquake Gateway | EQ |
+| gw_c | 10.0.0.3 | Fire Gateway | Fire |
+| water_a1 | 10.0.0.11 | Water Level Sensor | Flood |
+| rain_a2 | 10.0.0.12 | Rainfall Sensor | Flood |
+| seismic_b1 | 10.0.0.21 | Seismograph | EQ |
+| tilt_b2 | 10.0.0.22 | Tilt Sensor | EQ |
+| temp_c1 | 10.0.0.31 | Temperature Sensor | Fire |
+| smoke_c2 | 10.0.0.32 | Smoke Detector | Fire |
+
+---
+
+## 📁 Project Structure
+
+```
+SADRN/
+├── start_sadrn.sh              # ★ Main startup script
+├── stop_sadrn.sh               # Stop all services
+├── topology.py                 # Mininet topology definition
+├── requirements.txt            # Python dependencies
+│
+├── controller/                 # SDN Controller
+│   └── sadrn_controller.py     # Ryu OpenFlow controller
+│
+├── hosts/                      # Network host scripts
+│   ├── sensor.py               # Sensor simulation
+│   └── gateway.py              # Gateway aggregation
+│
+├── display/                    # Display server
+│   └── display_server.py       # Central UDP receiver
+│
+├── react-dashboard/            # Web Dashboard
+│   ├── backend/                # Flask API server
+│   │   ├── app.py
+│   │   └── requirements.txt
+│   └── frontend/               # React application
+│       ├── src/
+│       ├── package.json
+│       └── vite.config.js
+│
+└── docs/                       # Documentation
+    └── images/                 # Screenshots & diagrams
+        ├── architecture.png    # System architecture diagram
+        ├── dashboard.png       # Dashboard screenshot
+        └── sadrn_banner.png    # Project banner
+```
+
+---
+
+## 🔍 Troubleshooting
+
+### Ping Failures (X in pingall)
+
+```bash
+# Wait for STP convergence (~15 seconds)
+mininet> pingall
+
+# Check if STP is enabled
+mininet> sh ovs-vsctl get bridge s1 stp_enable
+# Should return: true
+```
+
+### Display Not Receiving Data
+
+```bash
+# Check if display server is running
+mininet> display ps aux | grep display_server
+
+# View display server log
+mininet> sh tail -20 /tmp/display.log
+
+# Restart display server
+mininet> display pkill -f display_server
+mininet> display python3 /home/mininet/SADRN/display/display_server.py 9001 &
+```
+
+### Dashboard Not Loading
+
+```bash
+# Check backend status
+curl http://localhost:5000/api/health
+
+# Check backend log
+tail -50 /tmp/dashboard_backend.log
+
+# Check frontend log
+tail -50 /tmp/dashboard_frontend.log
+```
+
+### Controller Not Connecting
+
+```bash
+# Verify controller is running
+pgrep -f "ryu-manager"
+
+# Check controller log
+tail -50 /tmp/controller.log
+
+# Restart controller
+pkill -f "ryu-manager"
+cd ~/SADRN/controller
+ryu-manager --ofp-tcp-listen-port 6653 sadrn_controller.py &
+```
+
+### Port Already in Use
+
+```bash
+# Free all SADRN ports
+fuser -k 3000/tcp 5000/tcp 5001/tcp 6653/tcp
+```
+
+---
+
+## 📊 Log Files
+
+| Log File | Component | Purpose |
+|----------|-----------|---------|
+| `/tmp/controller.log` | Ryu Controller | OpenFlow events |
+| `/tmp/dashboard_backend.log` | Flask API | API requests |
+| `/tmp/dashboard_frontend.log` | React/Vite | Frontend build |
+| `/tmp/display.log` | Display Server | Sensor data receipts |
+| `/tmp/gw_a.log` | Gateway A | Flood zone traffic |
+| `/tmp/gw_b.log` | Gateway B | EQ zone traffic |
+| `/tmp/gw_c.log` | Gateway C | Fire zone traffic |
+| `/tmp/water_a1.log` | Water Sensor | Sensor readings |
+| `/tmp/seismic_b1.log` | Seismic Sensor | Sensor readings |
+| `/tmp/temp_c1.log` | Temp Sensor | Sensor readings |
+
+---
+
+## 👥 Team
+
+SADRN was developed as part of the 2026 SDN Hackathon.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+<div align="center">
+
+**[⬆ Back to Top](#sadrn--software-defined-adaptive-disaster-response-network)**
+
+</div>
