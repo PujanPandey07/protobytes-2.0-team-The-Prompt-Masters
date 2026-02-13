@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![SADRN Banner](docs/images/sadrn_banner.png)
+![SADRN Banner](docs/images/Sadrn2.drawio.png)
 
 *Real-time disaster monitoring powered by SDN technology*
 
@@ -32,7 +32,7 @@
 
 ## 🏗️ System Architecture
 
-![System Architecture](docs/images/architecture.png)
+![System Architecture](docs/images/Sadrn2.drawio.png)
 
 ```
                            ┌──────────────┐
@@ -73,7 +73,7 @@
 
 ## 📊 Dashboard Preview
 
-![Dashboard Screenshot](docs/images/dashboard.png)
+![Dashboard Screenshot](docs/images/dashboard_img.png)
 
 The React dashboard provides:
 - **Live Topology View** — Interactive network visualization
