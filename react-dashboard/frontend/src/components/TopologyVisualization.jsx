@@ -35,21 +35,6 @@ const BatteryIcon = ({ level }) => {
   )
 }
 
-// Envelope Packet Icon
-const EnvelopeIcon = ({ color = '#22c55e', size = 20 }) => (
-  <g>
-    {/* Envelope body */}
-    <rect x={-size/2} y={-size/3} width={size} height={size*0.65} rx={2} 
-      fill={color} stroke="white" strokeWidth={1.5}/>
-    {/* Envelope flap */}
-    <path d={`M${-size/2},${-size/3} L0,${size/6} L${size/2},${-size/3}`} 
-      fill="none" stroke="white" strokeWidth={1.5} strokeLinejoin="round"/>
-    {/* Data lines inside */}
-    <line x1={-size/3} y1={size/8} x2={size/3} y2={size/8} stroke="white" strokeWidth={1} opacity={0.7}/>
-    <line x1={-size/3} y1={size/4} x2={size/4} y2={size/4} stroke="white" strokeWidth={1} opacity={0.5}/>
-  </g>
-)
-
 // Main Component
 export default function TopologyVisualization({
   switches = {},
@@ -67,46 +52,59 @@ export default function TopologyVisualization({
 }) {
   const [selectedNode, setSelectedNode] = useState(null)
   const [selectedType, setSelectedType] = useState(null)
-  const [animatedPackets, setAnimatedPackets] = useState([])
+  const [renderKey, setRenderKey] = useState(0)
   const svgRef = useRef(null)
+  
+  // Use ref for packets to avoid re-renders on every animation frame
+  const packetsRef = useRef([])
   const animationFrameRef = useRef(null)
+  const lastRenderRef = useRef(0)
 
-  // Process incoming packets
+  // Process incoming packets - only add new ones
   useEffect(() => {
     if (packets.length > 0) {
-      setAnimatedPackets(prev => {
-        const existingIds = new Set(prev.map(p => p.id))
-        const newOnes = packets
-          .filter(p => !existingIds.has(p.id))
-          .map(p => ({
-            ...p,
-            startTime: Date.now(),
-            progress: 0
-          }))
-        // Keep recent packets + new ones
-        const recent = prev.filter(p => Date.now() - p.startTime < 4000)
-        return [...recent, ...newOnes]
-      })
+      const now = Date.now()
+      const existingIds = new Set(packetsRef.current.map(p => p.id))
+      const newOnes = packets
+        .filter(p => !existingIds.has(p.id))
+        .map(p => ({
+          ...p,
+          startTime: now,
+          duration: 3000  // 3 second animation
+        }))
+      
+      if (newOnes.length > 0) {
+        // Clean old packets and add new, limit to 8 max
+        packetsRef.current = [
+          ...packetsRef.current.filter(p => now - p.startTime < 4000).slice(-5),
+          ...newOnes
+        ].slice(-8)
+        setRenderKey(k => k + 1)  // Trigger single re-render
+      }
     }
   }, [packets])
 
-  // Animation loop - update packet progress
+  // Cleanup old packets periodically (every 500ms, not every frame)
   useEffect(() => {
-    let lastTime = 0
-    
-    const animate = (currentTime) => {
-      if (currentTime - lastTime >= 16) { // ~60fps
-        lastTime = currentTime
-        
-        setAnimatedPackets(prev => {
-          const now = Date.now()
-          return prev
-            .filter(p => now - p.startTime < 4000)
-            .map(p => ({
-              ...p,
-              progress: Math.min((now - p.startTime) / 3000, 1) // 3 second animation
-            }))
-        })
+    const cleanup = setInterval(() => {
+      const now = Date.now()
+      const before = packetsRef.current.length
+      packetsRef.current = packetsRef.current.filter(p => now - p.startTime < 4000)
+      if (packetsRef.current.length !== before) {
+        setRenderKey(k => k + 1)
+      }
+    }, 500)
+    return () => clearInterval(cleanup)
+  }, [])
+
+  // Animation loop - only updates visual progress, no state changes
+  useEffect(() => {
+    const animate = () => {
+      const now = Date.now()
+      // Only trigger render every 100ms for smoother performance
+      if (now - lastRenderRef.current > 100 && packetsRef.current.length > 0) {
+        lastRenderRef.current = now
+        setRenderKey(k => k + 1)
       }
       animationFrameRef.current = requestAnimationFrame(animate)
     }
@@ -169,20 +167,21 @@ export default function TopologyVisualization({
     return activeRoutePaths.has(`${source}-${target}`)
   }, [activeRoutePaths])
 
-  const getStatusColor = (status) => {
+  const getStatusColor = useCallback((status) => {
     if (status === 'EMERGENCY') return '#ef4444'
     if (status === 'WARNING') return '#f59e0b'
     return '#22c55e'
-  }
+  }, [])
 
-  const intentColors = {
+  const intentColors = useMemo(() => ({
     'high_priority': { primary: '#ef4444', label: 'EMERGENCY' },
     'low_latency': { primary: '#f59e0b', label: 'ALERT' },
     'balanced': { primary: '#22c55e', label: 'NORMAL' }
-  }
+  }), [])
+  
   const intent = intentColors[currentIntent] || intentColors.balanced
 
-  const handleNodeClick = (nodeId, type, e) => {
+  const handleNodeClick = useCallback((nodeId, type, e) => {
     e.stopPropagation()
     if (selectedNode === nodeId) {
       setSelectedNode(null)
@@ -191,14 +190,20 @@ export default function TopologyVisualization({
       setSelectedNode(nodeId)
       setSelectedType(type)
     }
-  }
+  }, [selectedNode])
 
   // Calculate packet position along its path
   const getPacketPosition = useCallback((pkt) => {
-    if (!pkt.path || pkt.path.length < 2 || pkt.progress >= 1) return null
+    if (!pkt.path || pkt.path.length < 2) return null
+    
+    const now = Date.now()
+    const elapsed = now - pkt.startTime
+    const progress = Math.min(elapsed / pkt.duration, 1)
+    
+    if (progress >= 1) return null
     
     const totalSegments = pkt.path.length - 1
-    const progressPosition = pkt.progress * totalSegments
+    const progressPosition = progress * totalSegments
     const currentSegment = Math.min(Math.floor(progressPosition), totalSegments - 1)
     const segmentProgress = progressPosition - currentSegment
     
@@ -209,18 +214,15 @@ export default function TopologyVisualization({
     
     if (!from || !to) return null
     
-    // Calculate position
     const x = from.x + (to.x - from.x) * segmentProgress
     const y = from.y + (to.y - from.y) * segmentProgress
-    
-    // Calculate angle for envelope rotation
     const angle = Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI)
     
-    return { x, y, angle, priority: pkt.priority }
+    return { x, y, angle, priority: pkt.priority, progress }
   }, [positions])
 
   // Sensor Slider Popup
-  const SensorSlider = ({ sensorId, pos }) => {
+  const SensorSlider = useCallback(({ sensorId, pos }) => {
     const sensor = sensors[sensorId]
     if (!sensor) return null
     const color = getStatusColor(sensor.status)
@@ -249,10 +251,10 @@ export default function TopologyVisualization({
         </foreignObject>
       </g>
     )
-  }
+  }, [sensors, getStatusColor, onUpdateSensor])
 
   // Switch Battery Slider Popup
-  const SwitchSlider = ({ switchId, pos }) => {
+  const SwitchSlider = useCallback(({ switchId, pos }) => {
     const sw = switches[switchId]
     if (!sw) return null
     const battery = sw.battery || 100
@@ -281,10 +283,16 @@ export default function TopologyVisualization({
         </foreignObject>
       </g>
     )
-  }
+  }, [switches, onUpdateSwitchBattery])
 
-  // Get packets currently in flight
-  const activePackets = animatedPackets.filter(p => p.progress < 1)
+  // Get active packets with positions (computed on render)
+  const activePackets = useMemo(() => {
+    const now = Date.now()
+    return packetsRef.current
+      .filter(p => now - p.startTime < p.duration)
+      .map(pkt => ({ ...pkt, position: getPacketPosition(pkt) }))
+      .filter(pkt => pkt.position !== null)
+  }, [renderKey, getPacketPosition])
 
   return (
     <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-4">
@@ -325,12 +333,8 @@ export default function TopologyVisualization({
             <feGaussianBlur stdDeviation="3" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          <filter id="packetGlow">
-            <feGaussianBlur stdDeviation="5" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
           <filter id="shadow">
-            <feDropShadow dx="2" dy="2" stdDeviation="3" floodOpacity="0.5"/>
+            <feDropShadow dx="1" dy="1" stdDeviation="2" floodOpacity="0.4"/>
           </filter>
         </defs>
 
@@ -344,7 +348,6 @@ export default function TopologyVisualization({
           
           return (
             <g key={link.id}>
-              {/* Glow effect for active routes */}
               {isActive && !isFailed && (
                 <line x1={from.x} y1={from.y} x2={to.x} y2={to.y}
                   stroke="#22c55e" strokeWidth={8} opacity={0.2} filter="url(#glow)"/>
@@ -367,7 +370,7 @@ export default function TopologyVisualization({
           return (
             <line key={`disp-${swId}`}
               x1={sw.x} y1={sw.y} x2={disp.x} y2={disp.y}
-              stroke={isActive ? '#06b6d4' : '#06b6d4'}
+              stroke="#06b6d4"
               strokeWidth={isActive ? 2.5 : 1.5}
               strokeDasharray={isActive ? undefined : '4,4'}
               opacity={isActive ? 0.9 : 0.4}/>
@@ -406,35 +409,26 @@ export default function TopologyVisualization({
 
         {/* ===== PACKET ANIMATION - ENVELOPE ICONS ===== */}
         {activePackets.map((pkt, idx) => {
-          const pos = getPacketPosition(pkt)
+          const pos = pkt.position
           if (!pos) return null
           
           const color = pos.priority === 'EMERGENCY' ? '#ef4444' : 
                        pos.priority === 'WARNING' ? '#f59e0b' : '#22c55e'
-          const size = pos.priority === 'EMERGENCY' ? 28 : pos.priority === 'WARNING' ? 24 : 20
+          const size = pos.priority === 'EMERGENCY' ? 26 : pos.priority === 'WARNING' ? 22 : 18
           
           return (
             <g key={pkt.id || idx} transform={`translate(${pos.x}, ${pos.y})`} filter="url(#shadow)">
-              {/* Trail effect */}
-              <circle r={size * 0.6} fill={color} opacity={0.2}>
-                <animate attributeName="r" values={`${size * 0.4};${size};${size * 0.4}`} dur="0.6s" repeatCount="indefinite"/>
-                <animate attributeName="opacity" values="0.3;0.1;0.3" dur="0.6s" repeatCount="indefinite"/>
-              </circle>
+              {/* Pulsing trail */}
+              <circle r={size * 0.5} fill={color} opacity={0.15 + 0.1 * Math.sin(Date.now() / 150)}/>
               
               {/* Envelope packet */}
               <g transform={`rotate(${pos.angle || 0})`}>
-                {/* Envelope body */}
                 <rect x={-size/2} y={-size/3} width={size} height={size*0.6} rx={2} 
                   fill={color} stroke="white" strokeWidth={1.5}/>
-                {/* Envelope flap (V shape) */}
                 <path d={`M${-size/2},${-size/3} L0,${size/8} L${size/2},${-size/3}`} 
                   fill="none" stroke="white" strokeWidth={1.5} strokeLinejoin="round"/>
-                {/* Data indicator lines */}
                 <line x1={-size/4} y1={size/10} x2={size/4} y2={size/10} stroke="white" strokeWidth={1} opacity={0.7}/>
               </g>
-              
-              {/* Priority indicator dot */}
-              <circle cx={size/2 + 2} cy={-size/3 - 2} r={4} fill="white" stroke={color} strokeWidth={1.5}/>
             </g>
           )
         })}
