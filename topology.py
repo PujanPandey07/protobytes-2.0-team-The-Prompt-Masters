@@ -8,7 +8,7 @@ from mininet.link import TCLink
 import os, time
 
 class SADRNTopology:
-    def __init__(self):z
+    def __init__(self):
         self.controller_ip = '127.0.0.1'
         self.controller_port = 6653
         self.net = None
@@ -58,7 +58,7 @@ class SADRNTopology:
         self.net.addLink(self.switches['s3'], self.switches['s1'], bw=1000)
         # Zones
         self.net.addLink(self.switches['s4'], self.switches['s1'], bw=100)
-        self.net.addLink(self.switches['s5], self.switches['s2'], bw=100)
+        self.net.addLink(self.switches['s5'], self.switches['s2'], bw=100)
         self.net.addLink(self.switches['s6'], self.switches['s3'], bw=100)
         # Display
         self.net.addLink(self.display, self.switches['s2'], bw=1000)
