@@ -136,7 +136,7 @@ def get_active_graph():
     intent = state['current_intent']
     
     # Intent weights: (latency_w, battery_w)
-    weights = {'high_priority': (0.9, 0.1), 'low_latency': (0.6, 0.4), 'balanced': (0.4, 0.6)}
+    weights = {'high_priority': (0.95, 0.05), 'low_latency': (0.7, 0.3), 'balanced': (0.25, 0.75)}
     lat_w, bat_w = weights.get(intent, (0.5, 0.5))
     
     for link in state['switch_links']:

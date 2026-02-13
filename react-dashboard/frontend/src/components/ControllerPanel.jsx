@@ -15,7 +15,7 @@ export default function ControllerPanel({
       color: 'bg-red-500',
       textColor: 'text-red-400',
       borderColor: 'border-red-500',
-      weights: { latency: 0.9, battery: 0.1 }
+      weights: { latency: 0.95, battery: 0.05 }
     },
     'low_latency': {
       label: 'ALERT',
@@ -23,7 +23,7 @@ export default function ControllerPanel({
       color: 'bg-yellow-500',
       textColor: 'text-yellow-400',
       borderColor: 'border-yellow-500',
-      weights: { latency: 0.6, battery: 0.4 }
+      weights: { latency: 0.7, battery: 0.3 }
     },
     'balanced': {
       label: 'NORMAL',
@@ -31,7 +31,7 @@ export default function ControllerPanel({
       color: 'bg-green-500',
       textColor: 'text-green-400',
       borderColor: 'border-green-500',
-      weights: { latency: 0.4, battery: 0.6 }
+      weights: { latency: 0.25, battery: 0.75 }
     }
   }
 
